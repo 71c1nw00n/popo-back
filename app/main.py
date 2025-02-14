@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 from collections import defaultdict
@@ -6,14 +7,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
 from PIL import Image
-from dotenv import load_dotenv
+# from python_dotenv import load_dotenv
 
 # 환경 변수 로드
-load_dotenv()
+# load_dotenv()
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # 특정 출처만 허용
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],  # 필요한 메서드만 허용
+    allow_headers=["Authorization", "Content-Type"],  # 필요한 헤더만 허용
+)
+
+
 class UserCreate(BaseModel):
-    id: int
+    id: str
     password: str
 
 class PortfolioCreate(BaseModel):
@@ -55,10 +65,8 @@ class ExperienceCreate(BaseModel):
     job_title: str
     job_responsibility: str
     job_exp: str
-    start_yr: int
-    start_month: int
-    end_yr: int
-    end_month: int
+    start_date: str
+    end_date: str
 
 class ProjectCreate(BaseModel):
     portfolio_id: int
@@ -68,10 +76,8 @@ class ProjectCreate(BaseModel):
     project_responsibility: str
     project_link: Optional[str] = None
     description: str
-    start_yr: int
-    start_month: int
-    end_yr: int
-    end_month: int
+    start_date: str
+    end_date: str
 
 # === 데이터 저장 ===
 users_db = {}
@@ -135,53 +141,53 @@ def get_portfolio(portfolio_id: int):
         raise HTTPException(status_code=404, detail=f"ID가 {portfolio_id}인 포트폴리오를 찾을 수 없습니다.")
     return {"message": "포트폴리오 조회 성공", "portfolio": portfolio}
 
-# === 이미지 업로드 ===
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+# # === 이미지 업로드 ===
+# API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 
-UPLOAD_DIR = "backend/uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)  # 업로드 폴더 생성
+# UPLOAD_DIR = "backend/uploads"
+# os.makedirs(UPLOAD_DIR, exist_ok=True)  # 업로드 폴더 생성
 
-# 고정된 파일 이름 설정 (항상 덮어쓰기)
-FIXED_FILENAME = "uploaded_image.png"
-CROPPED_FILENAME = "cropped_uploaded_image.png"
+# # 고정된 파일 이름 설정 (항상 덮어쓰기)
+# FIXED_FILENAME = "uploaded_image.png"
+# CROPPED_FILENAME = "cropped_uploaded_image.png"
 
-# 크롭할 사이즈 (가로x세로)
-TARGET_WIDTH = 350
-TARGET_HEIGHT = 250
+# # 크롭할 사이즈 (가로x세로)
+# TARGET_WIDTH = 350
+# TARGET_HEIGHT = 250
 
-@app.post("/upload/")
-async def upload_file(file: UploadFile = File(...)):
-    file_path = os.path.join(UPLOAD_DIR, FIXED_FILENAME)
-    cropped_path = os.path.join(UPLOAD_DIR, CROPPED_FILENAME)
+# @app.post("/upload/")
+# async def upload_file(file: UploadFile = File(...)):
+#     file_path = os.path.join(UPLOAD_DIR, FIXED_FILENAME)
+#     cropped_path = os.path.join(UPLOAD_DIR, CROPPED_FILENAME)
 
-    # 기존 파일 삭제 (원본 & 크롭된 파일)
-    for path in [file_path, cropped_path]:
-        if os.path.exists(path):
-            os.remove(path)
+#     # 기존 파일 삭제 (원본 & 크롭된 파일)
+#     for path in [file_path, cropped_path]:
+#         if os.path.exists(path):
+#             os.remove(path)
 
-    # 새 파일 저장
-    with open(file_path, "wb") as buffer:
-        buffer.write(await file.read())
+#     # 새 파일 저장
+#     with open(file_path, "wb") as buffer:
+#         buffer.write(await file.read())
 
-    # 이미지 크롭
-    with Image.open(file_path) as img:
-        width, height = img.size
-        left = (width - TARGET_WIDTH) / 2
-        top = (height - TARGET_HEIGHT) / 2
-        right = (width + TARGET_WIDTH) / 2
-        bottom = (height + TARGET_HEIGHT) / 2
-        img = img.crop((left, top, right, bottom))  # 중앙 크롭
-        img.save(cropped_path)
+#     # 이미지 크롭
+#     with Image.open(file_path) as img:
+#         width, height = img.size
+#         left = (width - TARGET_WIDTH) / 2
+#         top = (height - TARGET_HEIGHT) / 2
+#         right = (width + TARGET_WIDTH) / 2
+#         bottom = (height + TARGET_HEIGHT) / 2
+#         img = img.crop((left, top, right, bottom))  # 중앙 크롭
+#         img.save(cropped_path)
 
-    return {"url": f"{API_BASE_URL}/uploads/{CROPPED_FILENAME}"}  # 환경 변수 적용
+#     return {"url": f"{API_BASE_URL}/uploads/{CROPPED_FILENAME}"}  # 환경 변수 적용
 
-# 업로드된 파일 제공
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+# # 업로드된 파일 제공
+# app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
